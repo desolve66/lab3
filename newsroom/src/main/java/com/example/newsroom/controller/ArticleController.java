@@ -50,6 +50,18 @@ public class ArticleController {
         return toDto(articleService.create(article, dto.getSectionId(), dto.getAuthorId()));
     }
 
+    @PostMapping("/{id}/submit")
+    @ResponseStatus(HttpStatus.OK)
+    public ArticleDto submit(@PathVariable Long id) {
+        return toDto(articleService.submitForReview(id));
+    }
+
+    @PostMapping("/{id}/retract")
+    @ResponseStatus(HttpStatus.OK)
+    public ArticleDto retract(@PathVariable Long id) {
+        return toDto(articleService.retract(id));
+    }
+
     @PatchMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     public ArticleDto patch(@PathVariable Long id, @RequestBody ArticleDto dto) {

@@ -1,5 +1,6 @@
 package com.example.newsroom.service;
 
+import com.example.newsroom.exception.BusinessException;
 import com.example.newsroom.exception.NotFoundException;
 import com.example.newsroom.model.Article;
 import com.example.newsroom.model.ArticleStatus;
@@ -31,9 +32,14 @@ public class EditionIssueService {
 
     @Transactional
     public EditionIssue create(EditionIssue issue, List<Long> articleIds) {
-        issue.setIssueDate(LocalDate.now()); // серверная дата
+        issue.setIssueDate(LocalDate.now());
         if (articleIds != null && !articleIds.isEmpty()) {
             List<Article> articles = articleRepository.findAllById(articleIds);
+            for (Article a : articles) {
+                if (a.getStatus() != ArticleStatus.APPROVED) {
+                    throw new BusinessException("В выпуск можно включить только одобренную статью (APPROVED). Статья '" + a.getTitle() + "' имеет статус: " + a.getStatus());
+                }
+            }
             issue.setArticles(articles);
         }
         return issueRepository.save(issue);
@@ -45,7 +51,6 @@ public class EditionIssueService {
         if (patch.getStatus() != null) {
             existing.setStatus(patch.getStatus());
 
-            // БИЗНЕС-ЛОГИКА: при публикации выпуска все статьи в нем становятся PUBLISHED
             if (patch.getStatus() == IssueStatus.PUBLISHED) {
                 for (Article a : existing.getArticles()) {
                     a.setStatus(ArticleStatus.PUBLISHED);
@@ -65,5 +70,50 @@ public class EditionIssueService {
         EditionIssue issue = findById(id);
         issue.getArticles().clear();
         issueRepository.delete(issue);
+    }
+
+    @Transactional
+    public EditionIssue addArticleToIssue(Long issueId, Long articleId) {
+        EditionIssue issue = findById(issueId);
+        Article article = articleRepository.findById(articleId)
+                .orElseThrow(() -> new NotFoundException("Article not found: " + articleId));
+
+        if (issue.getStatus() == IssueStatus.PUBLISHED || issue.getStatus() == IssueStatus.ARCHIVED) {
+            throw new BusinessException("Нельзя добавлять статьи в уже опубликованный или архивный номер!");
+        }
+
+        if (article.getStatus() != ArticleStatus.APPROVED) {
+            throw new BusinessException("В номер можно включить только проверенную и одобренную статью (APPROVED). Текущий статус статьи: " + article.getStatus());
+        }
+
+        if (issue.getArticles().contains(article)) {
+            throw new BusinessException("Данная статья уже включена в этот выпуск!");
+        }
+
+        issue.getArticles().add(article);
+        return issueRepository.save(issue);
+    }
+
+    @Transactional
+    public EditionIssue publish(Long id) {
+        EditionIssue issue = findById(id);
+
+        if (issue.getStatus() == IssueStatus.PUBLISHED) {
+            throw new BusinessException("Выпуск уже был опубликован ранее!");
+        }
+
+        if (issue.getArticles().isEmpty()) {
+            throw new BusinessException("Нельзя опубликовать пустой выпуск! Добавьте хотя бы одну статью.");
+        }
+
+        for (Article article : issue.getArticles()) {
+            article.setStatus(ArticleStatus.PUBLISHED);
+            articleRepository.save(article);
+        }
+
+        issue.setStatus(IssueStatus.PUBLISHED);
+        issue.setIssueDate(LocalDate.now());
+
+        return issueRepository.save(issue);
     }
 }

@@ -1,8 +1,11 @@
 package com.example.newsroom.service;
 
+import com.example.newsroom.exception.BusinessException;
 import com.example.newsroom.exception.NotFoundException;
 import com.example.newsroom.model.Article;
+import com.example.newsroom.model.ArticleStatus;
 import com.example.newsroom.model.EditionIssue;
+import com.example.newsroom.model.IssueStatus;
 import com.example.newsroom.repository.ArticleRepository;
 import com.example.newsroom.repository.EditionIssueRepository;
 import com.example.newsroom.repository.EditorialSectionRepository;
@@ -70,5 +73,44 @@ public class ArticleService {
             }
         }
         articleRepository.delete(article);
+    }
+
+    @Transactional
+    public Article submitForReview(Long id) {
+        Article article = findById(id);
+
+        if (article.getStatus() != ArticleStatus.DRAFT) {
+            throw new BusinessException("На проверку можно отправить только черновик (DRAFT). Текущий статус: " + article.getStatus());
+        }
+
+        if (article.getSection() == null || !Boolean.TRUE.equals(article.getSection().getIsAvailableForPublication())) {
+            throw new BusinessException("Нельзя отправить статью на проверку: рубрика закрыта для публикаций или не указана!");
+        }
+
+        if (article.getText() == null || article.getText().trim().length() < 10) {
+            throw new BusinessException("Текст статьи слишком короткий (минимум 10 символов)");
+        }
+
+        article.setStatus(ArticleStatus.IN_REVIEW);
+        return articleRepository.save(article);
+    }
+
+    @Transactional
+    public Article retract(Long id) {
+        Article article = findById(id);
+
+        if (article.getStatus() == ArticleStatus.DRAFT) {
+            throw new BusinessException("Черновик нельзя отозвать, его можно просто удалить");
+        }
+
+        List<EditionIssue> issues = issueRepository.findAll();
+        for (EditionIssue issue : issues) {
+            if (issue.getStatus() != IssueStatus.PUBLISHED && issue.getArticles().remove(article)) {
+                issueRepository.save(issue);
+            }
+        }
+
+        article.setStatus(ArticleStatus.REJECTED);
+        return articleRepository.save(article);
     }
 }

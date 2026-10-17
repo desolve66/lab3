@@ -4,8 +4,8 @@ Content-Type: application/json
 
 {
   "name": "Иван Иванов",
-  "email": "ivan@example.com",
-  "role": "JOURNALIST"
+  "email": "ivan2@example.com",
+  "role": "EDITOR"
 }
 
 ### 2. Получить список пользователей (GET -> 200 OK)
@@ -21,15 +21,15 @@ Content-Type: application/json
 }
 
 ### 4. Создать статью (POST -> 201 Created)
-POST http://localhost:8080/api/articles
+POST http://localhost:8080/api/editorial-sections
 Content-Type: application/json
 
 {
-  "sectionId": 1,
-  "authorId": 1,
-  "title": "Новый релиз Java",
-  "text": "Вышла новая версия платформы...",
-  "status": "DRAFT"
+  "title": "Первая новость",
+  "text": "Текст первой новости для проверки редакционной системы.",
+  "status": "IN_REVIEW",
+  "sectionId": 2,
+  "authorId": 3
 }
 
 ### 5. Создать редакторскую проверку (POST -> 201 Created)

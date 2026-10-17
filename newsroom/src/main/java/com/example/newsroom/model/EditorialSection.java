@@ -1,3 +1,4 @@
+
 package com.example.newsroom.model;
 
 import jakarta.persistence.Column;
@@ -20,5 +21,5 @@ public class EditorialSection extends BaseEntity {
     private String name;
 
     @Column(nullable = false)
-    private Boolean isAvailableForPublication;
+    private Boolean isAvailableForPublication = true;
 }

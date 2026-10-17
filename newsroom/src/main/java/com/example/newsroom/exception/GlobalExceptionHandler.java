@@ -15,18 +15,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleNotFound(NotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                 "timestamp", LocalDateTime.now(),
-                "status", HttpStatus.NOT_FOUND.value(),
+                "status", 404,
                 "error", "Not Found",
                 "message", ex.getMessage()
         ));
     }
 
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<Map<String, Object>> handleBusiness(BusinessException ex) {
+    @ExceptionHandler({BusinessException.class, IllegalArgumentException.class, IllegalStateException.class})
+    public ResponseEntity<Map<String, Object>> handleBusinessException(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
                 "timestamp", LocalDateTime.now(),
-                "status", HttpStatus.BAD_REQUEST.value(),
-                "error", "Bad Request",
+                "status", 400,
+                "error", "Business Rule Violation",
                 "message", ex.getMessage()
         ));
     }
