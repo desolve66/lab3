@@ -1,72 +1,99 @@
-### 1. Создать пользователя (POST -> 201 Created)
+### 1. Создать автора
 POST http://localhost:8080/api/users
 Content-Type: application/json
 
 {
-  "name": "Иван Иванов",
-  "email": "ivan2@example.com",
-  "role": "EDITOR"
+  "name": "Алексей Автор",
+  "email": "alex.author@newsroom.com",
+  "role": "AUTHOR"
 }
 
-### 2. Получить список пользователей (GET -> 200 OK)
-GET http://localhost:8080/api/users
-
-### 3. Создать рубрику (POST -> 201 Created)
+### 2. Создать открытую рубрику
 POST http://localhost:8080/api/editorial-sections
 Content-Type: application/json
 
 {
-  "name": "Технологии",
+  "name": "Технологии будущего",
   "isAvailableForPublication": true
 }
 
-### 4. Создать статью (POST -> 201 Created)
+### 3. Создать закрытую рубрику (для проверки валидации)
 POST http://localhost:8080/api/editorial-sections
 Content-Type: application/json
 
 {
-  "title": "Первая новость",
-  "text": "Текст первой новости для проверки редакционной системы.",
-  "status": "IN_REVIEW",
-  "sectionId": 2,
-  "authorId": 3
+  "name": "Слухи и сплетни (закрыто)",
+  "isAvailableForPublication": false
 }
 
-### 5. Создать редакторскую проверку (POST -> 201 Created)
-# Обратите внимание: время клиент НЕ передает, сервер сам поставит текущее
+### 4. Создать статью (черновик DRAFT)
+POST http://localhost:8080/api/articles
+Content-Type: application/json
+
+{
+  "sectionId": 1,
+  "authorId": 1,
+  "title": "Запуск нового суперкомпьютера",
+  "text": "Инженеры успешно запустили мощнейший вычислительный кластер.",
+  "status": "DRAFT"
+}
+
+### 5. [БИЗНЕС-ОПЕРАЦИЯ 1] Отправка статьи на модерацию (DRAFT -> IN_REVIEW)
+POST http://localhost:8080/api/articles/1/submit
+
+### 6. [БИЗНЕС-ОПЕРАЦИЯ 2] Редакторская проверка (IN_REVIEW -> APPROVED)
 POST http://localhost:8080/api/editorial-reviews
 Content-Type: application/json
 
 {
   "articleId": 1,
   "decision": "APPROVED",
-  "comments": "Отличная статья, к публикации готова"
+  "comments": "Статья одобрена, факты проверены."
 }
 
-### 6. Создать выпуск издания (POST -> 201 Created)
-# Дата также будет выставлена сервером автоматически
+### 7. Создать выпуск журнала/газеты
 POST http://localhost:8080/api/edition-issues
 Content-Type: application/json
 
 {
   "status": "DRAFT",
-  "articleIds": [1]
+  "articleIds": []
 }
 
-### 7. Обновить статью через PATCH (PATCH -> 200 OK)
-PATCH http://localhost:8080/api/articles/1
+### 8. [БИЗНЕС-ОПЕРАЦИЯ 3] Включение проверенной статьи в выпуск
+POST http://localhost:8080/api/edition-issues/1/articles/1
+
+### 9. [БИЗНЕС-ОПЕРАЦИЯ 4] Публикация выпуска (выпуск и статья переходят в PUBLISHED)
+POST http://localhost:8080/api/edition-issues/1/publish
+
+### 10. [БИЗНЕС-ОПЕРАЦИЯ 5] Отзыв статьи
+POST http://localhost:8080/api/articles/1/retract
+
+### =========================================================
+### НЕГАТИВНЫЕ ПРОВЕРКИ (Ожидается 400 Bad Request)
+### =========================================================
+
+### 11. Попытка создать и отправить статью из закрытой рубрики (sectionId = 2)
+POST http://localhost:8080/api/articles
 Content-Type: application/json
 
 {
-  "status": "APPROVED"
+  "sectionId": 2,
+  "authorId": 1,
+  "title": "Непроверенный инсайд",
+  "text": "Текст в архивную рубрику.",
+  "status": "DRAFT"
 }
 
-### 8. Получить выпуск издания по ID (GET -> 200 OK)
-GET http://localhost:8080/api/edition-issues/1
+### 12. Валидация: отправка из закрытой рубрики (вернет 400 с понятным сообщением)
+POST http://localhost:8080/api/articles/2/submit
 
-### 9. Проверка удаления пользователя (DELETE -> 204 No Content)
-# Статья не должна упасть, у нее просто обнулится authorId
-DELETE http://localhost:8080/api/users/1
+### 13. Валидация: отклонение статьи без комментария (вернет 400)
+POST http://localhost:8080/api/editorial-reviews
+Content-Type: application/json
 
-### 10. Проверяем статью после удаления автора (GET -> 200 OK, authorId = null)
-GET http://localhost:8080/api/articles/1
+{
+  "articleId": 2,
+  "decision": "REJECTED",
+  "comments": ""
+}
